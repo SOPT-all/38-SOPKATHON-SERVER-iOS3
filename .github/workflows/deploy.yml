@@ -75,7 +75,7 @@ jobs:
           script: |
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/sopkathon-ios3:latest
             sudo docker rm -f springboot || true
-            sudo docker run --env-file /root/.env --name springboot -d -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/sopkathon-ios3:latest
+            sudo docker run --env-file /root/.env --name springboot --network web -d -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/sopkathon-ios3:latest
             sudo docker image prune -f
             sleep 20
             echo "===== springboot container logs ====="
