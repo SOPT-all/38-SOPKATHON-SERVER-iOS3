@@ -20,6 +20,10 @@ configurations {
     }
 }
 
+jar {
+    enabled = false
+}
+
 dependencies {
     // Spring Boot Starters
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
