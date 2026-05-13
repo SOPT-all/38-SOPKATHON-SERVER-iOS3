@@ -74,6 +74,13 @@ jobs:
           password: ${{ secrets.NCP_PASSWORD }}
           script: |
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/sopkathon-ios3:latest
-            sudo docker stop springboot || true
-            sudo docker run --env-file /root/.env --name springboot --rm -d -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/sopkathon-ios3:latest
+            sudo docker rm -f springboot || true
+            sudo docker run --env-file /root/.env --name springboot -d -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/sopkathon-ios3:latest
             sudo docker image prune -f
+            sleep 20
+            echo "===== springboot container logs ====="
+            sudo docker logs --tail 200 springboot
+            if [ "$(sudo docker inspect -f '{{.State.Running}}' springboot)" != "true" ]; then
+              echo "::error::springboot container is not running"
+              exit 1
+            fi
