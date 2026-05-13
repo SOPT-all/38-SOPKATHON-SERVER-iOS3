@@ -4,7 +4,7 @@ SOPT 38기 솝카톤 iOS3팀 Spring Boot 서버입니다.
 
 ## Requirements
 
-- Java 17
+- Java 21
 - Gradle Wrapper
 
 ## Run

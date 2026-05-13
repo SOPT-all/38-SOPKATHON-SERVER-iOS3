@@ -10,7 +10,7 @@ description = 'SOPT 38th SOPKATHON iOS3 Server'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
