@@ -170,7 +170,7 @@ public class MistakeController implements MistakeApi {  // Swagger 인터페이�
             @Valid @RequestBody MistakeCreateRequest request
     ) {
         MistakeResponse response = mistakeService.create(request);
-        return CommonApiResponse.successResponse(GlobalSuccessCode.CREATED, response);
+        return CommonApiResponse.successResponse(GlobalSuccessCode.OK, response);
     }
 
     @GetMapping("/{mistakeId}")
@@ -307,7 +307,7 @@ public class MistakeAccessDeniedException extends BaseException {
 public interface MistakeApi {
 
     @Operation(summary = "실수 기록 생성")
-    @ApiResponse(responseCode = "201", description = "생성 성공")
+    @ApiResponse(responseCode = "200", description = "생성 성공")
     @ApiExceptions({MistakeNotFoundException.class, MistakeAccessDeniedException.class})
     ResponseEntity<CommonApiResponse<MistakeResponse>> create(
             @RequestBody MistakeCreateRequest request

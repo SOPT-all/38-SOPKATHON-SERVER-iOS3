@@ -29,7 +29,7 @@ public class MistakeController implements MistakeApi {
             @Valid @RequestBody MistakeCreateRequest request
     ) {
         mistakeService.create(userId, request);
-        return CommonApiResponse.successResponse(GlobalSuccessCode.CREATED, null);
+        return CommonApiResponse.successResponse(GlobalSuccessCode.OK, null);
     }
 
     @GetMapping("/{mistakeId}")
