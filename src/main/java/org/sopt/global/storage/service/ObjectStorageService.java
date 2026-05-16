@@ -19,7 +19,11 @@ import org.sopt.global.storage.dto.request.PresignedUploadUrlRequest;
 import org.sopt.global.storage.dto.response.CompleteUploadResponse;
 import org.sopt.global.storage.dto.response.PresignedDownloadUrlResponse;
 import org.sopt.global.storage.dto.response.PresignedUploadUrlResponse;
-import org.sopt.global.storage.exception.StorageErrorCode;
+import org.sopt.global.storage.exception.FileSizeExceededException;
+import org.sopt.global.storage.exception.InvalidObjectKeyException;
+import org.sopt.global.storage.exception.InvalidUploadedObjectException;
+import org.sopt.global.storage.exception.ObjectStorageRequestFailedException;
+import org.sopt.global.storage.exception.UnsupportedContentTypeException;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -76,7 +80,7 @@ public class ObjectStorageService {
             );
         } catch (S3Exception exception) {
             log.error("Failed to generate presigned upload URL. bucket={}, key={}", properties.bucket(), objectKey, exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            throw new ObjectStorageRequestFailedException();
         }
     }
 
@@ -105,10 +109,10 @@ public class ObjectStorageService {
             throw exception;
         } catch (IOException exception) {
             log.error("Failed to close uploaded object validation stream. bucket={}, key={}", properties.bucket(), request.objectKey(), exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            throw new ObjectStorageRequestFailedException();
         } catch (S3Exception exception) {
             log.error("Failed to validate uploaded object. bucket={}, key={}", properties.bucket(), request.objectKey(), exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            throw new ObjectStorageRequestFailedException();
         }
     }
 
@@ -134,7 +138,7 @@ public class ObjectStorageService {
             );
         } catch (S3Exception exception) {
             log.error("Failed to generate presigned download URL. bucket={}, key={}", properties.bucket(), objectKey, exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            throw new ObjectStorageRequestFailedException();
         }
     }
 
@@ -148,7 +152,7 @@ public class ObjectStorageService {
             );
         } catch (S3Exception exception) {
             log.error("Failed to delete object. bucket={}, key={}", properties.bucket(), objectKey, exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            throw new ObjectStorageRequestFailedException();
         }
     }
 
@@ -168,26 +172,26 @@ public class ObjectStorageService {
         String normalizedContentType = normalizeContentType(contentType);
         Set<String> allowedContentTypes = Set.copyOf(properties.allowedContentTypes());
         if (!allowedContentTypes.contains(normalizedContentType)) {
-            throw new BaseException(StorageErrorCode.UNSUPPORTED_CONTENT_TYPE);
+            throw new UnsupportedContentTypeException();
         }
         if (contentLength > properties.maxFileSize()) {
-            throw new BaseException(StorageErrorCode.FILE_SIZE_EXCEEDED);
+            throw new FileSizeExceededException();
         }
     }
 
     private void validateUploadedObject(CompleteUploadRequest request, GetObjectResponse response) {
         long uploadedContentLength = resolveUploadedContentLength(response);
         if (uploadedContentLength > properties.maxFileSize()) {
-            throw new BaseException(StorageErrorCode.FILE_SIZE_EXCEEDED);
+            throw new FileSizeExceededException();
         }
         if (uploadedContentLength != request.contentLength()) {
-            throw new BaseException(StorageErrorCode.INVALID_UPLOADED_OBJECT);
+            throw new InvalidUploadedObjectException();
         }
 
         String requestedContentType = normalizeContentType(request.contentType());
         String uploadedContentType = normalizeContentType(response.contentType());
         if (!requestedContentType.equals(uploadedContentType)) {
-            throw new BaseException(StorageErrorCode.INVALID_UPLOADED_OBJECT);
+            throw new InvalidUploadedObjectException();
         }
     }
 
@@ -219,7 +223,7 @@ public class ObjectStorageService {
     private void validateObjectKey(String objectKey) {
         String keyPrefix = properties.keyPrefix() + "/";
         if (!objectKey.startsWith(keyPrefix) || objectKey.contains("..")) {
-            throw new BaseException(StorageErrorCode.INVALID_OBJECT_KEY);
+            throw new InvalidObjectKeyException();
         }
     }
 
@@ -234,7 +238,7 @@ public class ObjectStorageService {
     private String encodeObjectKey(String objectKey) {
         return objectKey.lines()
                 .findFirst()
-                .orElseThrow(() -> new BaseException(StorageErrorCode.INVALID_OBJECT_KEY))
+                .orElseThrow(InvalidObjectKeyException::new)
                 .replace("\\", "/")
                 .transform(key -> {
                     String[] segments = key.split("/");
