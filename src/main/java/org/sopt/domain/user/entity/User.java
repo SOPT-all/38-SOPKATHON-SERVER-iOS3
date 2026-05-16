@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,7 +29,18 @@ public class User extends BaseTimeEntity {
     @Column(name = "streak_count", nullable = false)
     private int streakCount = 0;
 
-    public void addStreakCount() {
-        streakCount++;
+    @Column(name = "last_active_date")
+    private LocalDate lastActiveDate;
+
+    public void updateStreak(LocalDate today) {
+        if (lastActiveDate != null && lastActiveDate.equals(today)) {
+            return;
+        }
+        if (lastActiveDate != null && lastActiveDate.equals(today.minusDays(1))) {
+            streakCount++;
+        } else {
+            streakCount = 1;
+        }
+        lastActiveDate = today;
     }
 }
