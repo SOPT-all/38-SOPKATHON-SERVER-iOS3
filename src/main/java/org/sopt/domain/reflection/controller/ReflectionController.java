@@ -29,6 +29,6 @@ public class ReflectionController implements ReflectionApi {
             @Valid @RequestBody ReflectionCreateRequest request
     ) {
         ReflectionCreateResponse response = reflectionService.create(userId, mistakeId, request);
-        return CommonApiResponse.successResponse(GlobalSuccessCode.OK, response);
+        return CommonApiResponse.successResponse(GlobalSuccessCode.CREATED, response);
     }
 }
