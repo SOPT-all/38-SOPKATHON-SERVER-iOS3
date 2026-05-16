@@ -3,9 +3,11 @@ package org.sopt.global.storage.config;
 import java.time.Duration;
 import java.util.List;
 
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -17,8 +19,8 @@ public record ObjectStorageProperties(
         @NotBlank String bucket,
         @NotBlank String accessKey,
         @NotBlank String secretKey,
-        Duration uploadUrlExpiration,
-        Duration downloadUrlExpiration,
+        @NotNull @DurationMin(seconds = 1) Duration uploadUrlExpiration,
+        @NotNull @DurationMin(seconds = 1) Duration downloadUrlExpiration,
         @Positive long maxFileSize,
         @NotBlank String keyPrefix,
         @NotEmpty List<String> allowedContentTypes

@@ -4,9 +4,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.sopt.global.code.GlobalSuccessCode;
 import org.sopt.global.response.CommonApiResponse;
+import org.sopt.global.storage.dto.request.CompleteUploadRequest;
 import org.sopt.global.storage.dto.request.DeleteObjectRequest;
 import org.sopt.global.storage.dto.request.PresignedDownloadUrlRequest;
 import org.sopt.global.storage.dto.request.PresignedUploadUrlRequest;
+import org.sopt.global.storage.dto.response.CompleteUploadResponse;
 import org.sopt.global.storage.dto.response.PresignedDownloadUrlResponse;
 import org.sopt.global.storage.dto.response.PresignedUploadUrlResponse;
 import org.sopt.global.storage.service.ObjectStorageService;
@@ -31,6 +33,14 @@ public class ObjectStorageController {
             @Valid @RequestBody PresignedUploadUrlRequest request
     ) {
         PresignedUploadUrlResponse response = objectStorageService.generateUploadUrl(request);
+        return CommonApiResponse.successResponse(GlobalSuccessCode.OK, response);
+    }
+
+    @PostMapping("/complete")
+    public ResponseEntity<CommonApiResponse<CompleteUploadResponse>> completeUpload(
+            @Valid @RequestBody CompleteUploadRequest request
+    ) {
+        CompleteUploadResponse response = objectStorageService.completeUpload(request);
         return CommonApiResponse.successResponse(GlobalSuccessCode.OK, response);
     }
 
