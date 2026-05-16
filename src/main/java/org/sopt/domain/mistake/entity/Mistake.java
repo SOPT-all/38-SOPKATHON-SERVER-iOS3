@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,6 +33,9 @@ public class Mistake extends BaseTimeEntity {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String imageUrl;
+
+    @Column(nullable = false)
+    private LocalDate date;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
