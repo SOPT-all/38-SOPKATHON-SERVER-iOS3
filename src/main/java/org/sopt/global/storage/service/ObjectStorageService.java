@@ -1,5 +1,6 @@
 package org.sopt.global.storage.service;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Locale;
@@ -18,10 +19,10 @@ import org.sopt.global.storage.dto.response.PresignedDownloadUrlResponse;
 import org.sopt.global.storage.dto.response.PresignedUploadUrlResponse;
 import org.sopt.global.storage.exception.StorageErrorCode;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -55,7 +56,6 @@ public class ObjectStorageService {
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(properties.bucket())
                 .key(objectKey)
-                .contentType(normalizedContentType)
                 .build();
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(properties.uploadUrlExpiration())
@@ -82,19 +82,25 @@ public class ObjectStorageService {
         validateUploadMetadata(request.contentType(), request.contentLength());
 
         try {
-            HeadObjectResponse response = s3Client.headObject(HeadObjectRequest.builder()
+            try (ResponseInputStream<GetObjectResponse> objectStream = s3Client.getObject(GetObjectRequest.builder()
                     .bucket(properties.bucket())
                     .key(request.objectKey())
-                    .build());
-            validateUploadedObject(request, response);
+                    .range("bytes=0-0")
+                    .build())) {
+                GetObjectResponse response = objectStream.response();
+                validateUploadedObject(request, response);
+            }
             return new CompleteUploadResponse(
                     request.objectKey(),
-                    response.contentType(),
-                    response.contentLength()
+                    normalizeContentType(request.contentType()),
+                    request.contentLength()
             );
         } catch (BaseException exception) {
             deleteObjectQuietly(request.objectKey());
             throw exception;
+        } catch (IOException exception) {
+            log.error("Failed to close uploaded object validation stream. bucket={}, key={}", properties.bucket(), request.objectKey(), exception);
+            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
         } catch (S3Exception exception) {
             log.error("Failed to validate uploaded object. bucket={}, key={}", properties.bucket(), request.objectKey(), exception);
             throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
@@ -156,11 +162,12 @@ public class ObjectStorageService {
         }
     }
 
-    private void validateUploadedObject(CompleteUploadRequest request, HeadObjectResponse response) {
-        if (response.contentLength() > properties.maxFileSize()) {
+    private void validateUploadedObject(CompleteUploadRequest request, GetObjectResponse response) {
+        long uploadedContentLength = resolveUploadedContentLength(response);
+        if (uploadedContentLength > properties.maxFileSize()) {
             throw new BaseException(StorageErrorCode.FILE_SIZE_EXCEEDED);
         }
-        if (!response.contentLength().equals(request.contentLength())) {
+        if (uploadedContentLength != request.contentLength()) {
             throw new BaseException(StorageErrorCode.INVALID_UPLOADED_OBJECT);
         }
 
@@ -169,6 +176,14 @@ public class ObjectStorageService {
         if (!requestedContentType.equals(uploadedContentType)) {
             throw new BaseException(StorageErrorCode.INVALID_UPLOADED_OBJECT);
         }
+    }
+
+    private long resolveUploadedContentLength(GetObjectResponse response) {
+        String contentRange = response.contentRange();
+        if (contentRange != null && contentRange.contains("/")) {
+            return Long.parseLong(contentRange.substring(contentRange.lastIndexOf('/') + 1));
+        }
+        return response.contentLength();
     }
 
     private String generateObjectKey(String contentType) {
