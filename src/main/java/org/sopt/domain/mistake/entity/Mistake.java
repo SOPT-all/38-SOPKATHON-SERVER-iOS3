@@ -36,9 +36,13 @@ public class Mistake extends BaseTimeEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(columnDefinition = "TEXT")
-    private String controllableNote;
+    private Mistake(User user, String imageUrl, String content) {
+        this.user = user;
+        this.imageUrl = imageUrl;
+        this.content = content;
+    }
 
-    @Column(columnDefinition = "TEXT")
-    private String uncontrollableNote;
+    public static Mistake create(User user, String imageUrl, String content) {
+        return new Mistake(user, imageUrl, content);
+    }
 }
