@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/images")
+@RequestMapping("/v1/images")
 public class ObjectStorageController implements ObjectStorageApi {
 
     private final ObjectStorageService objectStorageService;
