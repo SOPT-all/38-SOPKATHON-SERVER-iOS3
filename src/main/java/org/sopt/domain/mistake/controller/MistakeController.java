@@ -1,9 +1,11 @@
 package org.sopt.domain.mistake.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.sopt.domain.mistake.dto.request.MistakeCreateRequest;
 import org.sopt.domain.mistake.dto.response.MistakeDetailResponse;
+import org.sopt.domain.mistake.dto.response.MistakeListResponse;
 import org.sopt.domain.mistake.service.MistakeService;
 import org.sopt.global.code.GlobalSuccessCode;
 import org.sopt.global.response.CommonApiResponse;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -29,7 +32,16 @@ public class MistakeController implements MistakeApi {
             @Valid @RequestBody MistakeCreateRequest request
     ) {
         mistakeService.create(userId, request);
-        return CommonApiResponse.successResponse(GlobalSuccessCode.CREATED, null);
+        return CommonApiResponse.successResponse(GlobalSuccessCode.OK, null);
+    }
+
+    @GetMapping
+    public ResponseEntity<CommonApiResponse<MistakeListResponse>> getList(
+            @RequestHeader("User-Id") Long userId,
+            @Positive(message = "커서는 양수여야 합니다.") @RequestParam(required = false) Long cursor,
+            @Positive(message = "페이지 크기는 양수여야 합니다.") @RequestParam(required = false) Integer size
+    ) {
+        return CommonApiResponse.successResponse(GlobalSuccessCode.OK, mistakeService.getList(userId, cursor, size));
     }
 
     @GetMapping("/{mistakeId}")
