@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -18,7 +19,10 @@ import org.sopt.global.entity.BaseTimeEntity;
 
 @Getter
 @Entity
-@Table(name = "mistakes")
+@Table(
+    name = "mistakes",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "date"})
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Mistake extends BaseTimeEntity {
 

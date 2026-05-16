@@ -27,7 +27,7 @@ public class Reflection extends BaseTimeEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mistake_id", nullable = false)
+    @JoinColumn(name = "mistake_id", nullable = false, unique = true)
     private Mistake mistake;
 
     @Column(columnDefinition = "TEXT")
