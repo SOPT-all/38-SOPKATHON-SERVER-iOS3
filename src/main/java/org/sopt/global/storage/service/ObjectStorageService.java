@@ -74,7 +74,6 @@ public class ObjectStorageService {
             return new PresignedUploadUrlResponse(
                     objectKey,
                     presignedRequest.url().toString(),
-                    "PUT",
                     properties.uploadUrlExpiration().toSeconds(),
                     Map.of("Content-Type", normalizedContentType)
             );
@@ -100,8 +99,6 @@ public class ObjectStorageService {
             makeObjectPublic(request.objectKey());
             return new CompleteUploadResponse(
                     request.objectKey(),
-                    normalizeContentType(request.contentType()),
-                    request.contentLength(),
                     generatePublicUrl(request.objectKey())
             );
         } catch (BaseException exception) {
@@ -131,9 +128,7 @@ public class ObjectStorageService {
         try {
             PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
             return new PresignedDownloadUrlResponse(
-                    objectKey,
                     presignedRequest.url().toString(),
-                    "GET",
                     properties.downloadUrlExpiration().toSeconds()
             );
         } catch (S3Exception exception) {
