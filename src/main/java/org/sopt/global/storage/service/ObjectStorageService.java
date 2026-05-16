@@ -1,6 +1,8 @@
 package org.sopt.global.storage.service;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Locale;
@@ -23,6 +25,7 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -90,10 +93,12 @@ public class ObjectStorageService {
                 GetObjectResponse response = objectStream.response();
                 validateUploadedObject(request, response);
             }
+            makeObjectPublic(request.objectKey());
             return new CompleteUploadResponse(
                     request.objectKey(),
                     normalizeContentType(request.contentType()),
-                    request.contentLength()
+                    request.contentLength(),
+                    generatePublicUrl(request.objectKey())
             );
         } catch (BaseException exception) {
             deleteObjectQuietly(request.objectKey());
@@ -145,6 +150,14 @@ public class ObjectStorageService {
             log.error("Failed to delete object. bucket={}, key={}", properties.bucket(), objectKey, exception);
             throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
         }
+    }
+
+    private void makeObjectPublic(String objectKey) {
+        s3Client.putObjectAcl(builder -> builder
+                .bucket(properties.bucket())
+                .key(objectKey)
+                .acl(ObjectCannedACL.PUBLIC_READ)
+        );
     }
 
     private void validateUploadRequest(PresignedUploadUrlRequest request) {
@@ -208,6 +221,37 @@ public class ObjectStorageService {
         if (!objectKey.startsWith(keyPrefix) || objectKey.contains("..")) {
             throw new BaseException(StorageErrorCode.INVALID_OBJECT_KEY);
         }
+    }
+
+    private String generatePublicUrl(String objectKey) {
+        return "%s/%s/%s".formatted(
+                properties.endpoint().replaceAll("/+$", ""),
+                encodePathSegment(properties.bucket()),
+                encodeObjectKey(objectKey)
+        );
+    }
+
+    private String encodeObjectKey(String objectKey) {
+        return objectKey.lines()
+                .findFirst()
+                .orElseThrow(() -> new BaseException(StorageErrorCode.INVALID_OBJECT_KEY))
+                .replace("\\", "/")
+                .transform(key -> {
+                    String[] segments = key.split("/");
+                    StringBuilder encodedPath = new StringBuilder();
+                    for (String segment : segments) {
+                        if (!encodedPath.isEmpty()) {
+                            encodedPath.append('/');
+                        }
+                        encodedPath.append(encodePathSegment(segment));
+                    }
+                    return encodedPath.toString();
+                });
+    }
+
+    private String encodePathSegment(String segment) {
+        return URLEncoder.encode(segment, StandardCharsets.UTF_8)
+                .replace("+", "%20");
     }
 
     private void deleteObjectQuietly(String objectKey) {
