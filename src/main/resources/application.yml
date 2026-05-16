@@ -25,3 +25,19 @@ springdoc:
     doc-expansion: none
     display-request-duration: true
     try-it-out-enabled: true
+
+object-storage:
+  endpoint: ${OBJECT_STORAGE_ENDPOINT:https://kr.object.ncloudstorage.com}
+  region: ${OBJECT_STORAGE_REGION:kr-standard}
+  bucket: ${OBJECT_STORAGE_BUCKET:local-bucket}
+  access-key: ${OBJECT_STORAGE_ACCESS_KEY:local-access-key}
+  secret-key: ${OBJECT_STORAGE_SECRET_KEY:local-secret-key}
+  upload-url-expiration: ${OBJECT_STORAGE_UPLOAD_URL_EXPIRATION:10m}
+  download-url-expiration: ${OBJECT_STORAGE_DOWNLOAD_URL_EXPIRATION:10m}
+  max-file-size: ${OBJECT_STORAGE_MAX_FILE_SIZE:10485760}
+  key-prefix: ${OBJECT_STORAGE_KEY_PREFIX:images}
+  allowed-content-types:
+    - image/jpeg
+    - image/png
+    - image/heic
+    - image/webp
