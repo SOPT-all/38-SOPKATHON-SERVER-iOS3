@@ -24,4 +24,11 @@ public class User extends BaseTimeEntity {
 
     @Column(nullable = false)
     private String name;
+
+    @Column(name = "streak_count", nullable = false)
+    private int streakCount = 0;
+
+    public void addStreakCount() {
+        streakCount++;
+    }
 }
