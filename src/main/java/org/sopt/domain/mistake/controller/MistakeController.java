@@ -1,7 +1,5 @@
 package org.sopt.domain.mistake.controller;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.sopt.domain.mistake.dto.request.MistakeCreateRequest;
 import org.sopt.domain.mistake.dto.response.MistakeDetailResponse;
@@ -29,7 +27,7 @@ public class MistakeController implements MistakeApi {
     @PostMapping
     public ResponseEntity<CommonApiResponse<Void>> create(
             @RequestHeader("User-Id") Long userId,
-            @Valid @RequestBody MistakeCreateRequest request
+            @RequestBody MistakeCreateRequest request
     ) {
         mistakeService.create(userId, request);
         return CommonApiResponse.successResponse(GlobalSuccessCode.OK, null);
@@ -38,8 +36,8 @@ public class MistakeController implements MistakeApi {
     @GetMapping
     public ResponseEntity<CommonApiResponse<MistakeListResponse>> getList(
             @RequestHeader("User-Id") Long userId,
-            @Positive(message = "커서는 양수여야 합니다.") @RequestParam(required = false) Long cursor,
-            @Positive(message = "페이지 크기는 양수여야 합니다.") @RequestParam(required = false) Integer size
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(required = false) Integer size
     ) {
         return CommonApiResponse.successResponse(GlobalSuccessCode.OK, mistakeService.getList(userId, cursor, size));
     }

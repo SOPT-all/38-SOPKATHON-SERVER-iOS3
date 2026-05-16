@@ -3,6 +3,7 @@ package org.sopt.domain.mistake.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.sopt.domain.mistake.dto.request.MistakeCreateRequest;
 import org.sopt.domain.mistake.dto.response.MistakeDetailResponse;
@@ -27,7 +28,7 @@ public interface MistakeApi {
     @ApiExceptions({UserNotFoundException.class, MistakeDuplicateException.class})
     ResponseEntity<CommonApiResponse<Void>> create(
             @RequestHeader("User-Id") Long userId,
-            @RequestBody MistakeCreateRequest request
+            @Valid @RequestBody MistakeCreateRequest request
     );
 
     @Operation(summary = "실수 카드 목록 조회")
