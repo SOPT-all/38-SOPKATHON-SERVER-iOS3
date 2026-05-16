@@ -43,3 +43,5 @@ logs/
 *.temp
 *.swp
 *.swo
+
+application-local.yml
