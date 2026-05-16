@@ -17,12 +17,17 @@ import org.sopt.global.storage.dto.request.PresignedUploadUrlRequest;
 import org.sopt.global.storage.dto.response.CompleteUploadResponse;
 import org.sopt.global.storage.dto.response.PresignedDownloadUrlResponse;
 import org.sopt.global.storage.dto.response.PresignedUploadUrlResponse;
-import org.sopt.global.storage.exception.StorageErrorCode;
+import org.sopt.global.storage.exception.FileSizeExceededException;
+import org.sopt.global.storage.exception.InvalidObjectKeyException;
+import org.sopt.global.storage.exception.InvalidUploadedObjectException;
+import org.sopt.global.storage.exception.ObjectStorageRequestFailedException;
+import org.sopt.global.storage.exception.UnsupportedContentTypeException;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -45,6 +50,7 @@ public class ObjectStorageService {
     );
 
     private final ObjectStorageProperties properties;
+    private final ObjectStorageUrlResolver objectStorageUrlResolver;
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
 
@@ -67,18 +73,17 @@ public class ObjectStorageService {
             return new PresignedUploadUrlResponse(
                     objectKey,
                     presignedRequest.url().toString(),
-                    "PUT",
                     properties.uploadUrlExpiration().toSeconds(),
                     Map.of("Content-Type", normalizedContentType)
             );
         } catch (S3Exception exception) {
             log.error("Failed to generate presigned upload URL. bucket={}, key={}", properties.bucket(), objectKey, exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            throw new ObjectStorageRequestFailedException();
         }
     }
 
     public CompleteUploadResponse completeUpload(CompleteUploadRequest request) {
-        validateObjectKey(request.objectKey());
+        objectStorageUrlResolver.validateObjectKey(request.objectKey());
         validateUploadMetadata(request.contentType(), request.contentLength());
 
         try {
@@ -90,25 +95,26 @@ public class ObjectStorageService {
                 GetObjectResponse response = objectStream.response();
                 validateUploadedObject(request, response);
             }
+            makeObjectPublic(request.objectKey());
             return new CompleteUploadResponse(
                     request.objectKey(),
-                    normalizeContentType(request.contentType()),
-                    request.contentLength()
+                    objectStorageUrlResolver.generatePublicUrl(request.objectKey())
             );
         } catch (BaseException exception) {
             deleteObjectQuietly(request.objectKey());
             throw exception;
         } catch (IOException exception) {
             log.error("Failed to close uploaded object validation stream. bucket={}, key={}", properties.bucket(), request.objectKey(), exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            throw new ObjectStorageRequestFailedException();
         } catch (S3Exception exception) {
             log.error("Failed to validate uploaded object. bucket={}, key={}", properties.bucket(), request.objectKey(), exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            deleteObjectQuietly(request.objectKey());
+            throw new ObjectStorageRequestFailedException();
         }
     }
 
     public PresignedDownloadUrlResponse generateDownloadUrl(String objectKey) {
-        validateObjectKey(objectKey);
+        objectStorageUrlResolver.validateObjectKey(objectKey);
 
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(properties.bucket())
@@ -122,19 +128,17 @@ public class ObjectStorageService {
         try {
             PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
             return new PresignedDownloadUrlResponse(
-                    objectKey,
                     presignedRequest.url().toString(),
-                    "GET",
                     properties.downloadUrlExpiration().toSeconds()
             );
         } catch (S3Exception exception) {
             log.error("Failed to generate presigned download URL. bucket={}, key={}", properties.bucket(), objectKey, exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            throw new ObjectStorageRequestFailedException();
         }
     }
 
     public void deleteObject(String objectKey) {
-        validateObjectKey(objectKey);
+        objectStorageUrlResolver.validateObjectKey(objectKey);
 
         try {
             s3Client.deleteObject(builder -> builder
@@ -143,8 +147,16 @@ public class ObjectStorageService {
             );
         } catch (S3Exception exception) {
             log.error("Failed to delete object. bucket={}, key={}", properties.bucket(), objectKey, exception);
-            throw new BaseException(StorageErrorCode.OBJECT_STORAGE_REQUEST_FAILED);
+            throw new ObjectStorageRequestFailedException();
         }
+    }
+
+    private void makeObjectPublic(String objectKey) {
+        s3Client.putObjectAcl(builder -> builder
+                .bucket(properties.bucket())
+                .key(objectKey)
+                .acl(ObjectCannedACL.PUBLIC_READ)
+        );
     }
 
     private void validateUploadRequest(PresignedUploadUrlRequest request) {
@@ -155,26 +167,26 @@ public class ObjectStorageService {
         String normalizedContentType = normalizeContentType(contentType);
         Set<String> allowedContentTypes = Set.copyOf(properties.allowedContentTypes());
         if (!allowedContentTypes.contains(normalizedContentType)) {
-            throw new BaseException(StorageErrorCode.UNSUPPORTED_CONTENT_TYPE);
+            throw new UnsupportedContentTypeException();
         }
         if (contentLength > properties.maxFileSize()) {
-            throw new BaseException(StorageErrorCode.FILE_SIZE_EXCEEDED);
+            throw new FileSizeExceededException();
         }
     }
 
     private void validateUploadedObject(CompleteUploadRequest request, GetObjectResponse response) {
         long uploadedContentLength = resolveUploadedContentLength(response);
         if (uploadedContentLength > properties.maxFileSize()) {
-            throw new BaseException(StorageErrorCode.FILE_SIZE_EXCEEDED);
+            throw new FileSizeExceededException();
         }
         if (uploadedContentLength != request.contentLength()) {
-            throw new BaseException(StorageErrorCode.INVALID_UPLOADED_OBJECT);
+            throw new InvalidUploadedObjectException();
         }
 
         String requestedContentType = normalizeContentType(request.contentType());
         String uploadedContentType = normalizeContentType(response.contentType());
         if (!requestedContentType.equals(uploadedContentType)) {
-            throw new BaseException(StorageErrorCode.INVALID_UPLOADED_OBJECT);
+            throw new InvalidUploadedObjectException();
         }
     }
 
@@ -201,13 +213,6 @@ public class ObjectStorageService {
 
     private String normalizeContentType(String contentType) {
         return contentType.toLowerCase(Locale.ROOT).trim();
-    }
-
-    private void validateObjectKey(String objectKey) {
-        String keyPrefix = properties.keyPrefix() + "/";
-        if (!objectKey.startsWith(keyPrefix) || objectKey.contains("..")) {
-            throw new BaseException(StorageErrorCode.INVALID_OBJECT_KEY);
-        }
     }
 
     private void deleteObjectQuietly(String objectKey) {

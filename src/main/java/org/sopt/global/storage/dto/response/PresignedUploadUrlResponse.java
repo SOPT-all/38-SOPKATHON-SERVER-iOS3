@@ -5,7 +5,6 @@ import java.util.Map;
 public record PresignedUploadUrlResponse(
         String objectKey,
         String uploadUrl,
-        String method,
         long expiresInSeconds,
         Map<String, String> headers
 ) {
