@@ -15,7 +15,6 @@ import org.sopt.global.storage.config.ObjectStorageProperties;
 import org.sopt.global.storage.dto.request.CompleteUploadRequest;
 import org.sopt.global.storage.dto.request.PresignedUploadUrlRequest;
 import org.sopt.global.storage.dto.response.CompleteUploadResponse;
-import org.sopt.global.storage.dto.response.PresignedDownloadUrlResponse;
 import org.sopt.global.storage.dto.response.PresignedUploadUrlResponse;
 import org.sopt.global.storage.exception.FileSizeExceededException;
 import org.sopt.global.storage.exception.InvalidObjectKeyException;
@@ -31,8 +30,6 @@ import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
@@ -109,44 +106,6 @@ public class ObjectStorageService {
         } catch (S3Exception exception) {
             log.error("Failed to validate uploaded object. bucket={}, key={}", properties.bucket(), request.objectKey(), exception);
             deleteObjectQuietly(request.objectKey());
-            throw new ObjectStorageRequestFailedException();
-        }
-    }
-
-    public PresignedDownloadUrlResponse generateDownloadUrl(String objectKey) {
-        objectStorageUrlResolver.validateObjectKey(objectKey);
-
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(properties.bucket())
-                .key(objectKey)
-                .build();
-        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(properties.downloadUrlExpiration())
-                .getObjectRequest(getObjectRequest)
-                .build();
-
-        try {
-            PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
-            return new PresignedDownloadUrlResponse(
-                    presignedRequest.url().toString(),
-                    properties.downloadUrlExpiration().toSeconds()
-            );
-        } catch (S3Exception exception) {
-            log.error("Failed to generate presigned download URL. bucket={}, key={}", properties.bucket(), objectKey, exception);
-            throw new ObjectStorageRequestFailedException();
-        }
-    }
-
-    public void deleteObject(String objectKey) {
-        objectStorageUrlResolver.validateObjectKey(objectKey);
-
-        try {
-            s3Client.deleteObject(builder -> builder
-                    .bucket(properties.bucket())
-                    .key(objectKey)
-            );
-        } catch (S3Exception exception) {
-            log.error("Failed to delete object. bucket={}, key={}", properties.bucket(), objectKey, exception);
             throw new ObjectStorageRequestFailedException();
         }
     }

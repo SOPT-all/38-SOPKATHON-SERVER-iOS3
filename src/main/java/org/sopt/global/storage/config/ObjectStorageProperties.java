@@ -20,7 +20,6 @@ public record ObjectStorageProperties(
         @NotBlank String accessKey,
         @NotBlank String secretKey,
         @NotNull @DurationMin(seconds = 1) Duration uploadUrlExpiration,
-        @NotNull @DurationMin(seconds = 1) Duration downloadUrlExpiration,
         @Positive long maxFileSize,
         @NotBlank String keyPrefix,
         @NotEmpty List<String> allowedContentTypes
