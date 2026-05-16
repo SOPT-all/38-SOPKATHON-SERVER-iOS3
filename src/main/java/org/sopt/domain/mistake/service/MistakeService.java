@@ -9,7 +9,7 @@ import org.sopt.domain.mistake.repository.MistakeRepository;
 import org.sopt.domain.user.entity.User;
 import org.sopt.domain.user.exception.UserNotFoundException;
 import org.sopt.domain.user.repository.UserRepository;
-import org.sopt.global.storage.config.ObjectStorageProperties;
+import org.sopt.global.storage.service.ObjectStorageUrlResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +20,7 @@ public class MistakeService {
 
     private final MistakeRepository mistakeRepository;
     private final UserRepository userRepository;
-    private final ObjectStorageProperties objectStorageProperties;
+    private final ObjectStorageUrlResolver objectStorageUrlResolver;
 
     @Transactional
     public void create(Long userId, MistakeCreateRequest request) {
@@ -31,7 +31,7 @@ public class MistakeService {
             throw new MistakeDuplicateException();
         }
 
-        String imageUrl = objectStorageProperties.endpoint() + "/" + objectStorageProperties.bucket() + "/" + request.imageObjectKey();
+        String imageUrl = objectStorageUrlResolver.generatePublicUrl(request.imageObjectKey());
         Mistake mistake = Mistake.create(user, imageUrl, request.content(), today);
         mistakeRepository.save(mistake);
         user.updateStreak(today);

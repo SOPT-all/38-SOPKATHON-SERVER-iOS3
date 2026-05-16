@@ -1,6 +1,7 @@
 package org.sopt.global.storage.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.sopt.global.response.CommonApiResponse;
@@ -58,7 +59,7 @@ public interface ObjectStorageApi {
     );
 
     @Operation(summary = "이미지 삭제")
-    @ApiResponse(responseCode = "204", description = "이미지 삭제 성공")
+    @ApiResponse(responseCode = "204", description = "이미지 삭제 성공", content = @Content)
     @ApiExceptions({
             InvalidObjectKeyException.class,
             ObjectStorageRequestFailedException.class

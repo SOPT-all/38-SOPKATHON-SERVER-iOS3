@@ -1,8 +1,6 @@
 package org.sopt.global.storage.service;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Locale;
@@ -52,6 +50,7 @@ public class ObjectStorageService {
     );
 
     private final ObjectStorageProperties properties;
+    private final ObjectStorageUrlResolver objectStorageUrlResolver;
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
 
@@ -84,7 +83,7 @@ public class ObjectStorageService {
     }
 
     public CompleteUploadResponse completeUpload(CompleteUploadRequest request) {
-        validateObjectKey(request.objectKey());
+        objectStorageUrlResolver.validateObjectKey(request.objectKey());
         validateUploadMetadata(request.contentType(), request.contentLength());
 
         try {
@@ -99,7 +98,7 @@ public class ObjectStorageService {
             makeObjectPublic(request.objectKey());
             return new CompleteUploadResponse(
                     request.objectKey(),
-                    generatePublicUrl(request.objectKey())
+                    objectStorageUrlResolver.generatePublicUrl(request.objectKey())
             );
         } catch (BaseException exception) {
             deleteObjectQuietly(request.objectKey());
@@ -109,12 +108,13 @@ public class ObjectStorageService {
             throw new ObjectStorageRequestFailedException();
         } catch (S3Exception exception) {
             log.error("Failed to validate uploaded object. bucket={}, key={}", properties.bucket(), request.objectKey(), exception);
+            deleteObjectQuietly(request.objectKey());
             throw new ObjectStorageRequestFailedException();
         }
     }
 
     public PresignedDownloadUrlResponse generateDownloadUrl(String objectKey) {
-        validateObjectKey(objectKey);
+        objectStorageUrlResolver.validateObjectKey(objectKey);
 
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(properties.bucket())
@@ -138,7 +138,7 @@ public class ObjectStorageService {
     }
 
     public void deleteObject(String objectKey) {
-        validateObjectKey(objectKey);
+        objectStorageUrlResolver.validateObjectKey(objectKey);
 
         try {
             s3Client.deleteObject(builder -> builder
@@ -213,44 +213,6 @@ public class ObjectStorageService {
 
     private String normalizeContentType(String contentType) {
         return contentType.toLowerCase(Locale.ROOT).trim();
-    }
-
-    private void validateObjectKey(String objectKey) {
-        String keyPrefix = properties.keyPrefix() + "/";
-        if (!objectKey.startsWith(keyPrefix) || objectKey.contains("..")) {
-            throw new InvalidObjectKeyException();
-        }
-    }
-
-    private String generatePublicUrl(String objectKey) {
-        return "%s/%s/%s".formatted(
-                properties.endpoint().replaceAll("/+$", ""),
-                encodePathSegment(properties.bucket()),
-                encodeObjectKey(objectKey)
-        );
-    }
-
-    private String encodeObjectKey(String objectKey) {
-        return objectKey.lines()
-                .findFirst()
-                .orElseThrow(InvalidObjectKeyException::new)
-                .replace("\\", "/")
-                .transform(key -> {
-                    String[] segments = key.split("/");
-                    StringBuilder encodedPath = new StringBuilder();
-                    for (String segment : segments) {
-                        if (!encodedPath.isEmpty()) {
-                            encodedPath.append('/');
-                        }
-                        encodedPath.append(encodePathSegment(segment));
-                    }
-                    return encodedPath.toString();
-                });
-    }
-
-    private String encodePathSegment(String segment) {
-        return URLEncoder.encode(segment, StandardCharsets.UTF_8)
-                .replace("+", "%20");
     }
 
     private void deleteObjectQuietly(String objectKey) {
