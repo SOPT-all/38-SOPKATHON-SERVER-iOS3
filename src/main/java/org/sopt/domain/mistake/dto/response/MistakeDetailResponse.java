@@ -8,6 +8,7 @@ import org.sopt.domain.reflection.entity.Reflection;
 public record MistakeDetailResponse(
         Long mistakeId,
         String imageUrl,
+        String title,
         String content,
         LocalDate date,
         boolean hasReflection,
@@ -35,6 +36,7 @@ public record MistakeDetailResponse(
         return new MistakeDetailResponse(
                 mistake.getId(),
                 mistake.getImageUrl(),
+                mistake.getTitle(),
                 mistake.getContent(),
                 mistake.getDate(),
                 reflection != null,
