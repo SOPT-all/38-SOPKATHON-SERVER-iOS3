@@ -40,13 +40,14 @@ public class Mistake extends BaseTimeEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    private Mistake(User user, String imageUrl, String content) {
+    private Mistake(User user, String imageUrl, String content, LocalDate date) {
         this.user = user;
         this.imageUrl = imageUrl;
         this.content = content;
+        this.date = date;
     }
 
-    public static Mistake create(User user, String imageUrl, String content) {
-        return new Mistake(user, imageUrl, content);
+    public static Mistake create(User user, String imageUrl, String content, LocalDate date) {
+        return new Mistake(user, imageUrl, content, date);
     }
 }
