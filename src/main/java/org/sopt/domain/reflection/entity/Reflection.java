@@ -32,4 +32,17 @@ public class Reflection extends BaseTimeEntity {
 
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(nullable = false)
+    private int emojiIndex = 0;
+
+    private Reflection(Mistake mistake, String content, int emojiIndex) {
+        this.mistake = mistake;
+        this.content = content;
+        this.emojiIndex = emojiIndex;
+    }
+
+    public static Reflection create(Mistake mistake, String content, int emojiIndex) {
+        return new Reflection(mistake, content, emojiIndex);
+    }
 }
