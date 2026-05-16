@@ -48,7 +48,7 @@ public class MistakeService {
         }
 
         String imageUrl = objectStorageProperties.endpoint() + "/" + objectStorageProperties.bucket() + "/" + request.imageObjectKey();
-        Mistake mistake = Mistake.create(user, imageUrl, request.content(), today);
+        Mistake mistake = Mistake.create(user, imageUrl, request.title(), request.content(), today);
         mistakeRepository.save(mistake);
         user.updateStreak(today);
     }
