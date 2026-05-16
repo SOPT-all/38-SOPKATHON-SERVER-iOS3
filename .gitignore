@@ -45,3 +45,5 @@ logs/
 *.swo
 
 application-local.yml
+
+docs/
